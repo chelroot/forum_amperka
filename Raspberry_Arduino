@@ -1,0 +1,172 @@
+Связь Raspberry и Arduino (USB-rs485-i2c-SPI)
+
+
+Простые тесты проверки связи и основа для совместной работы.
+Темы:
+Arduino и персональный компьютер
+Rasberry и Arduino по кабелю USB
+Связь по RS485
+i2c
+SPI
+Зажигаем светодиод с персонального компьютера по кабелю USB
+Подключаем Arduino к нашему персональному компьютеру.
+Загружаем  скетч
+[code=cpp]int val;
+
+void setup() {
+    Serial.begin(9600);
+    pinMode(13, OUTPUT);
+    }
+void loop() {
+    if (Serial.available() > 0) {
+    val = Serial.read();
+    Serial.println(val);
+ 
+    if (val == 'Q')
+    {digitalWrite(13, HIGH);}
+ 
+    if (val == 'q')
+    {digitalWrite(13, LOW);}
+ 
+    }
+  }
+[/code]
+
+Находим кнопку "Монитор последовательного порта"
+Посылаем символ "Q"    - 13 светодиод на Arduino загорается
+Посылаем символ "q"    - 13 светодиод на Arduino гаснет
+[ATTACH]10545[/ATTACH]
+
+Считываем состояние кнопки по кабелю USB
+Скетч
+[code=cpp]int number;
+int val;
+void setup() {
+    Serial.begin(9600);
+    pinMode(8, INPUT); //8 пин - в режиме входа.
+    digitalWrite(8, HIGH); //подключаем подтягивающий резистор
+    }
+void loop() {
+    if (Serial.available() > 0) {
+    val = Serial.read();
+    if(digitalRead(8)==HIGH)//если кнопка отключена и подается подтягивающее +5V ...
+    {number = 1;Serial.write('1');}
+    if(digitalRead(8)==LOW)
+    {number = 0; Serial.write('0');} //если кнопка нажата и коротит на GND  ...
+    }
+  }
+[/code]
+Посылаем любой символ, получаем 0, если кнопка на pin 8 нажата  и 1, если не нажата.
+[ATTACH]10547[/ATTACH]
+
+Связь по кабелю USB между Rasbperry и Arduino
+Соединяем штатным кабелем USB в Raspberry и Arduino.
+Скетчи остаются прежние, что и в предыдущем примере и также загружаются с персонального компьютера. Raspberry  будет только посылать команды и считывать состояние кнопки.
+Заходим удаленно по ssh на Raspberry, узнаем к какому порту подсоединился Arduino (в моем примере)  и посылаем команды на включение и выключение светодиода
+
+Команды bash
+[code=bash]$ ssh pi@172.16.5.43
+pi@172.16.5.43's password:
+Linux raspberrypi 4.9.41-v7+ #1023 SMP Tue Aug 8 16:00:15 BST 2017 armv7l
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Sun Dec 24 20:37:20 2017 from 172.16.5.2
+pi@raspberrypi:~ $ ls /dev |grep ttyA
+ttyACM0
+ttyAMA0
+pi@raspberrypi:~ $ echo Q > /dev/ttyACM0
+pi@raspberrypi:~ $ echo q > /dev/ttyACM0 [/code]
+
+Считываем состояние кнопки командами bash
+Подгружаем
+[code=bash]pi@raspberrypi:~ $ sudo apt-get install picocom[/code]
+Устанавливаем связь с Arduino
+[code=bash]pi@raspberrypi:~ $ picocom /dev/ttyACM0 -b 9600 -l
+picocom v1.7
+
+port is        : /dev/ttyACM0
+flowcontrol    : none
+baudrate is    : 9600
+parity is      : none
+databits are   : 8
+escape is      : C-a
+local echo is  : no
+noinit is      : no
+noreset is     : no
+nolock is      : yes
+send_cmd is    : sz -vv
+receive_cmd is : rz -vv
+imap is        :
+omap is        :
+emap is        : crcrlf,delbs,
+
+Terminal ready
+[/code]
+В другом терминале  слушаем порт
+[code=bash]pi@raspberrypi:~ $ cat /dev/ttyACM0
+[/code]
+И наконец в третьем терминале посылаем символ
+[code=bash]pi@raspberrypi:~ $ echo Q > /dev/ttyACM0 [/code]
+Во втором терминале получаем ответы с Arduino
+[code=bash]pi@raspberrypi:~ $ cat /dev/ttyACM0
+111111111100
+[/code]
+В bash выглядит сложно, но тестировать удобно.
+Напишем скрипт на Python
+Подгружаем
+[code=bash]sudo apt-get install python-serial[/code]
+Пишем сам скрипт
+[code=python]#! /usr/bin/env python
+# coding: utf-8
+
+
+import serial, time
+
+ser = serial.Serial("/dev/ttyACM0")
+ser.baudrate = 9600
+
+while True :
+  ser.write('Q')
+  time.sleep(0.5)
+  ser.write('q')
+  time.sleep(0.5)
+[/code]
+Запускаем
+[code=bash]pi@raspberrypi:~ $ ./usbBLINK.py
+[/code]
+Светодиод мигает
+Пишем скрипт
+[code=python]#! /usr/bin/env python
+# coding: utf-8
+
+
+import serial, time
+
+ser = serial.Serial("/dev/ttyACM0")
+ser.baudrate = 9600
+
+while True :
+  ser.write('Q')
+  time.sleep(0.5)
+  aa = ser.read()
+  print(aa)
+  time.sleep(0.5)
+  ser.write('q')
+  time.sleep(0.5)
+  aa = ser.read()
+  print(aa)
+[/code]
+[code=bash]pi@raspberrypi:~ $ ./usbKN.py
+1
+1
+0
+0
+1
+1
+[/code]
+и нажимая на кнопку видим 0 или 1
