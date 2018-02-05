@@ -1,0 +1,43 @@
+int green = 5; //переменная с номером пина светодиода
+int red = 4;
+int blue = 3;
+int ldr = 0; //и фоторезистора
+int nnn = 0;
+
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(green, OUTPUT); //указываем, что светодиод - выход
+  pinMode(red, OUTPUT);
+  pinMode(blue, OUTPUT);
+  }
+
+
+
+void loop() //процедура loop
+
+{
+if (nnn > 3) { digitalWrite(green, LOW); digitalWrite(red, LOW) ; digitalWrite(blue, HIGH) ; delay (500);}
+else if (analogRead(ldr) < 400) {digitalWrite(green, HIGH); }
+else {digitalWrite(green, LOW),   digitalWrite(red, HIGH),   delay (3000),   nnn = nnn + 1;  }   
+
+digitalWrite(blue, LOW) ;
+delay (500);
+
+}
+##############
+const int pinPhoto = A0;
+int raw = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode( pinPhoto, INPUT );
+}
+
+void loop() {
+  raw = analogRead( pinPhoto );
+  Serial.println( raw );
+  delay(200);
+}
+
+http://robotclass.ru/tutorials/arduino-photoresistor/
